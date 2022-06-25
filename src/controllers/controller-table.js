@@ -19,6 +19,7 @@ module.exports ={
             itemKey: item.key,
             itemId: item.id
           }))
+        //   console.log
 
           let test = (str,type) =>{
             return new Promise((resolve, reject)=>{
@@ -42,7 +43,7 @@ module.exports ={
                             // res.send({transaction:false})
                             // return 
                         }   
-
+                            // console.log(results, 'ress')
                          resolve(results)
                     })
 
@@ -53,20 +54,19 @@ module.exports ={
             let queryColumn="";
             for(let i=0; i<items.length; i++){
                 response[i] = {}
-                response[i].data = await test(items[i].itemId, "data")
-                response[i].columns = await test(items[i].itemId, "column")
+                response[i].table = items[i].itemKey 
+                response[i].data = await test(items[i].itemKey, "data")
+                response[i].columns = await test(items[i].itemKey, "column")
 
-                // let queryCheck = 'DROP TABLE IF EXISTS '+items[i].itemId;
-                // alasql(queryCheck);
-                let string = "CREATE TABLE IF NOT EXISTS  "+items[i].itemId;
+                let string = "CREATE TABLE  "+items[i].itemKey;
                 let columns =" ( ";
                 
 
                 for(k=0;k<response[i].columns.length; k++){
                     // console.log(response[i].columns[k].Field, 'k')
-                    kolom.push(items[i].itemId +"_"+response[i].columns[k].Field)
+                    kolom.push(items[i].itemKey +"_"+response[i].columns[k].Field)
                     columns += response[i].columns[k].Field +" "+response[i].columns[k].Type+","
-                    queryColumn += items[i].itemId +"."+response[i].columns[k].Field+" AS "+items[i].itemId+"_"+response[i].columns[k].Field+","
+                    queryColumn += items[i].itemKey +"."+response[i].columns[k].Field+" AS "+items[i].itemKey+"_"+response[i].columns[k].Field+","
                 }
 
                 columns = columns.substring(0,columns.length)
@@ -76,11 +76,9 @@ module.exports ={
                 query = query.toUpperCase()
                 
                 alasql(query);
-                
                 alasql.tables[Object.keys(alasql.tables)[i]].data = response[i].data
 
             }
-            console.log(alasql.tables)
             queryColumn = queryColumn.substring(queryColumn.length-1, 0)
                 let query2;
                 if((join != undefined) && (join.length > 0)){
@@ -90,10 +88,15 @@ module.exports ={
                 }
 
                 innerJoin  = alasql(query2)
-                console.log(innerJoin)
+                // console.log(innerJoin)
                 data = {
                     "data" : innerJoin,
                     "columns" : kolom,
+                }
+
+                for(let i=0; i<items.length; i++){
+                    let queryCheck = 'DROP TABLE '+items[i].itemKey;
+                    alasql(queryCheck)
                 }
 
             res.send({
