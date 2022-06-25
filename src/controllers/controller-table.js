@@ -33,9 +33,9 @@ module.exports ={
                     
                     let query = type==='data' ? str2.concat(str): columns.concat(str)
 
-                    if(type === "data"){
-                        query += " LIMIT 10"
-                    }
+                    // if(type === "data"){
+                    //     query += " LIMIT 10"
+                    // }
 
                     connection.query(query, function (error, results) {
                         if(error){
