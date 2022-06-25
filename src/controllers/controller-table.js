@@ -56,8 +56,9 @@ module.exports ={
                 response[i].data = await test(items[i].itemId, "data")
                 response[i].columns = await test(items[i].itemId, "column")
 
-                
-                let string = "CREATE TABLE "+items[i].itemId;
+                // let queryCheck = 'DROP TABLE IF EXISTS '+items[i].itemId;
+                // alasql(queryCheck);
+                let string = "CREATE TABLE IF NOT EXISTS  "+items[i].itemId;
                 let columns =" ( ";
                 
 
@@ -73,10 +74,13 @@ module.exports ={
                 replaced += ")";
                 let query = string + replaced
                 query = query.toUpperCase()
+                
                 alasql(query);
+                
                 alasql.tables[Object.keys(alasql.tables)[i]].data = response[i].data
 
             }
+            console.log(alasql.tables)
             queryColumn = queryColumn.substring(queryColumn.length-1, 0)
                 let query2;
                 if((join != undefined) && (join.length > 0)){
@@ -86,6 +90,7 @@ module.exports ={
                 }
 
                 innerJoin  = alasql(query2)
+                console.log(innerJoin)
                 data = {
                     "data" : innerJoin,
                     "columns" : kolom,
@@ -98,7 +103,7 @@ module.exports ={
         } catch (error) {
             res.send({
                 transaction : false,
-                error: error
+                error: error.message
             })
         }
     },
