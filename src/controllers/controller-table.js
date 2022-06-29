@@ -2,6 +2,7 @@ const config = require('../config/database');
 const mysql = require('mysql');
 const pool = mysql.createPool(config);
 const alasql =  require('alasql')
+// const db = require('mysql2-promise')();
 
 pool.on('error',(err)=> {
     console.error(err);
@@ -10,16 +11,25 @@ pool.on('error',(err)=> {
 module.exports ={
     async getData(req,res) {
         try {
+
+            db.configure({
+                "host": "localhost",
+                "user": "foo",
+                "password": "bar",
+                "database": "db"
+            });
+
             let response = []
             let join = req.body.join
             let innerJoin;
             let kolom = []
             let table = req.body.table
+            let filter = req.body.filter
         const items = req.body.nodeData.map((item) => ({
             itemKey: item.key,
-            itemId: item.id
+            itemId: item.id,
+            itemsFilter : item.filter
           }))
-        //   console.log
 
           let test = (str,type) =>{
             return new Promise((resolve, reject)=>{
@@ -30,12 +40,33 @@ module.exports ={
                     let str2 = "SELECT * FROM "
 
                     let columns = "SHOW COLUMNS FROM "
-                    
-                    let query = type==='data' ? str2.concat(str): columns.concat(str)
+                    let query;
+                    let where="";
 
-                    // if(type === "data"){
-                    //     query += " LIMIT 10"
-                    // }
+                    if(type === "data"){
+                        // query = str2.concat(str, " WHERE ")
+                        query = str2.concat(str)
+                        if(filter.length>0){
+                            filter.forEach(f=> {
+                                // const tableFound = items.find(node=> node.itemKey === f.table)
+                                if(str=== f.table){
+                                    let condition = " WHERE "
+                                    query = query.concat(condition)
+                                    Object.keys(f.columns).forEach(indexColumn => {
+                                        where += ` ${f.columns[indexColumn]} = '${f.value[indexColumn]}' AND `
+                                    });
+                                }
+                            })
+                            
+                            let whereColumn = where.substring(0,where.length-4)
+                            query = query.concat(whereColumn)
+
+                        }else{
+                            query = str2.concat(str)
+                        }
+                    }else{
+                        query=columns.concat(str)
+                    }
 
                     connection.query(query, function (error, results) {
                         if(error){
@@ -43,7 +74,6 @@ module.exports ={
                             // res.send({transaction:false})
                             // return 
                         }   
-                            // console.log(results, 'ress')
                          resolve(results)
                     })
 
@@ -79,6 +109,7 @@ module.exports ={
                 alasql.tables[Object.keys(alasql.tables)[i]].data = response[i].data
 
             }
+            // console.log(alasql.tables, 'tab')
             queryColumn = queryColumn.substring(queryColumn.length-1, 0)
                 let query2;
                 if((join != undefined) && (join.length > 0)){
@@ -88,17 +119,14 @@ module.exports ={
                 }
 
                 innerJoin  = alasql(query2)
-                // console.log(innerJoin)
                 data = {
                     "data" : innerJoin,
                     "columns" : kolom,
                 }
-
                 for(let i=0; i<items.length; i++){
                     let queryCheck = 'DROP TABLE '+items[i].itemKey;
                     alasql(queryCheck)
                 }
-
             res.send({
                 transaction : true,
                 data: data
