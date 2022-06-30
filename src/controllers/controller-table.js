@@ -1,42 +1,174 @@
 const config = require('../config/database');
-const mysql = require('mysql');
-const pool = mysql.createPool(config);
+// const mysql = require('mysql');
+// const pool = mysql.createPool(config);
 const alasql =  require('alasql')
-// const db = require('mysql2-promise')();
+const db = require('mysql2-promise')();
+const mysql = require('promise-mysql2');
+const axios = require('axios');
 
-pool.on('error',(err)=> {
-    console.error(err);
-});
+
+// pool.on('error',(err)=> {
+//     console.error(err);
+// });
 
 module.exports ={
+
     async getData(req,res) {
         try {
+            let response = {}
+            let join = req.body.join
+            let innerJoin;
+            let kolom = []
+            let data = []
+            let table = req.body.table
+            let filter = req.body.filter
+            let queryColumn="";
 
-            db.configure({
-                "host": "localhost",
-                "user": "foo",
-                "password": "bar",
-                "database": "db"
-            });
+            const items = req.body.nodeData.map((item) => ({
+                itemKey: item.key,
+                itemId: item.id,
+                // itemConfig: item.config
+            }))
 
+            const config = {
+                headers: { Authorization: `Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6IkFsbCBVc2VyIiwidXNlcl9pcCI6IjAuMC4wLjBcLzAifQ.__Id-5IeNkaiLjFPuHTI5uMPYLL68u6vKFgoX_USz28` }
+            };
+
+
+            let dataConfig = [];
+                await axios.post('http://172.17.62.209:8088//bigenvelope/public/api/id/526', req.body, config)
+                .then((res) => {
+                    dataConfig = res.data
+                }).catch((err) => {
+                    console.error(err);
+                });
+                console.log(dataConfig)
+
+                // await axios.post('http://172.17.62.209:8088//bigenvelope/public/api/id/526', req.body, config)
+
+                const result = Object.keys(dataConfig).map((key) => [Number(key), dataConfig[key]]);
+
+                result.forEach(f=> {
+                    const tableFound = items.find(node=> node.itemId === f[1][0])
+                   if(tableFound != undefined){
+                     Object.keys(items).forEach(nodeKey=>{
+                        if(items[nodeKey].itemId === tableFound.itemId){
+                            items[nodeKey].itemConfig = f[1][1]
+                        }
+                    })
+                   }
+                })
+
+
+           for(let i=0; i<items.length;i++){
+               
+                
+                let connection = await mysql.createConnection({
+                    "host": items[i].itemConfig.host,
+                    "user": items[i].itemConfig.username,
+                    "password": items[i].itemConfig.password,
+                    "database": items[i].itemConfig.dbname
+                });
+
+                let str2 = "SELECT * FROM "
+
+                let query;
+                let where="";
+
+                    // query = str2.concat(str, " WHERE ")
+                query = str2.concat(items[i].itemKey)
+                if(filter.length>0){
+                    filter.forEach(f=> {
+                        // const tableFound = items.find(node=> node.itemKey === f.table)
+                        if(items[i].itemKey=== f.table){
+                            let condition = " WHERE "
+                            query = query.concat(condition)
+                            Object.keys(f.columns).forEach(indexColumn => {
+                                where += ` ${f.columns[indexColumn]} = '${f.value[indexColumn]}' AND `
+                            });
+                        }
+                    })
+                    
+                    let whereColumn = where.substring(0,where.length-4)
+                    query = query.concat(whereColumn)
+
+                }else{
+                    query = str2.concat(items[i].itemKey)
+                }
+
+                const [rows, fields] = await connection.query(query);
+                connection.end();
+                data[i] = {}
+                data[i].table = items[i].itemKey 
+                data[i].data = rows
+                data[i].columns = fields
+
+                let string = "CREATE TABLE  "+items[i].itemKey;
+                let columns =" ( ";
+
+                for(k=0;k<data[i].columns.length; k++){
+                    kolom.push(data[i].columns[k].table +"_"+data[i].columns[k].name)
+                    columns += data[i].columns[k].name +","
+                    queryColumn += data[i].columns[k].table +"."+data[i].columns[k].name+" AS "+data[i].columns[k].table+"_"+data[i].columns[k].name+","
+                }
+
+                columns = columns.substring(0,columns.length)
+                let replaced = columns.substring(columns.length-1, 0)
+                replaced += ")";
+                let queryAlasql = string + replaced
+                queryAlasql = queryAlasql.toUpperCase()
+                
+                alasql(queryAlasql);
+                alasql.tables[Object.keys(alasql.tables)[i]].data = data[i].data
+                
+           }
+
+           queryColumn = queryColumn.substring(queryColumn.length-1, 0)
+            let queryJoin;
+            if((join != undefined) && (join.length > 0)){
+                queryJoin = "SELECT "+queryColumn+" FROM "+table+" "+join[0].type+" "+join[0].table+" ON "+join[0].on[0][0]+" = "+join[0].on[0][1];
+            }else{
+                queryJoin = "SELECT "+queryColumn+" FROM "+table;
+            }
+
+            innerJoin  = alasql(queryJoin)
+
+            response = {
+                "data" : innerJoin,
+                "columns" : kolom,
+            }
+
+           res.send({
+                transaction : true,
+                data: response
+            })
+        } catch (error) {
+            res.send({
+                transaction : false,
+                error: error.message
+            })
+        }
+    },
+
+    async getData2(req,res) {
+        try {
+            // console.log(req.body,'req')
             let response = []
             let join = req.body.join
             let innerJoin;
             let kolom = []
             let table = req.body.table
             let filter = req.body.filter
-        const items = req.body.nodeData.map((item) => ({
-            itemKey: item.key,
-            itemId: item.id,
-            itemsFilter : item.filter
-          }))
-
-          let test = (str,type) =>{
-            return new Promise((resolve, reject)=>{
-                pool.getConnection((err, connection) => {
-
-                    if (err) throw err;
-
+            const items = req.body.nodeData.map((item) => ({
+                itemKey: item.key,
+                itemId: item.id,
+                itemConfig: item.config
+                // itemsFilter : item.filter
+            }))
+            
+            let test = (str,type, config) =>{
+                return new Promise((resolve, reject)=>{
+                    
                     let str2 = "SELECT * FROM "
 
                     let columns = "SHOW COLUMNS FROM "
@@ -68,30 +200,66 @@ module.exports ={
                         query=columns.concat(str)
                     }
 
-                    connection.query(query, function (error, results) {
-                        if(error){
-                            throw error
-                            // res.send({transaction:false})
-                            // return 
-                        }   
-                         resolve(results)
-                    })
+                   console.log(config, 'co')
+                    // db.configure({
+                        // "host": "172.17.62.52",
+                        // "user": "demo",
+                        // "password": "Demo@2020",
+                        // "database": "demo"
+                    // });
+                    db.configure({
+                        "host": config.host,
+                        "user": config.user,
+                        "password": config.password,
+                        "database": config.database
+                    });
 
-                    connection.release();
+                    // let data;
+
+                    db.execute(query).spread(function (results) {
+                        console.log(results, 'r')
+                        resolve(results)
+                    });
+                    // db.execute(query, function (error, results) {
+                    //     console.log(error, 'erpr')
+
+                    //     console.log(results, 'er')
+                    //     // if(error){
+                    //     //     // throw error;
+                    //     //     // res.send({transaction:false})
+                    //     //     // return 
+                    //     // }   
+                    //      resolve(results)
+                    // })
+                    console.log(query, 'quer')
+
+                    // const [rows, fields] = await db.execute(query).spread(function (results) {
+                    //     resolve(results)
+                    // });
+
+                    // const [rows, fields] = await connection.query("SELECT * FROM PRODUCT");
+                    // // connection.end();
+                    // console.log(fields, 'wo');
+                    // for(let i=0;i<fields.length;i++){
+                    //     console.log(fields[i].name)
+                    // }
+
+
+
+                        // console.log(rows, 'r')
                 })
-            })
-          }
+            }
+
             let queryColumn="";
             for(let i=0; i<items.length; i++){
                 response[i] = {}
                 response[i].table = items[i].itemKey 
-                response[i].data = await test(items[i].itemKey, "data")
-                response[i].columns = await test(items[i].itemKey, "column")
+                response[i].data = await test(items[i].itemKey, "data", items[i].itemConfig)
+                response[i].columns = await test(items[i].itemKey, "column", items[i].itemConfig)
 
                 let string = "CREATE TABLE  "+items[i].itemKey;
                 let columns =" ( ";
                 
-
                 for(k=0;k<response[i].columns.length; k++){
                     // console.log(response[i].columns[k].Field, 'k')
                     kolom.push(items[i].itemKey +"_"+response[i].columns[k].Field)
@@ -109,27 +277,27 @@ module.exports ={
                 alasql.tables[Object.keys(alasql.tables)[i]].data = response[i].data
 
             }
-            // console.log(alasql.tables, 'tab')
-            queryColumn = queryColumn.substring(queryColumn.length-1, 0)
-                let query2;
-                if((join != undefined) && (join.length > 0)){
-                    query2 = "SELECT "+queryColumn+" FROM "+table+" "+join[0].type+" "+join[0].table+" ON "+join[0].on[0][0]+" = "+join[0].on[0][1];
-                }else{
-                    query2 = "SELECT "+queryColumn+" FROM "+table;
-                }
 
-                innerJoin  = alasql(query2)
-                data = {
-                    "data" : innerJoin,
-                    "columns" : kolom,
-                }
-                for(let i=0; i<items.length; i++){
-                    let queryCheck = 'DROP TABLE '+items[i].itemKey;
-                    alasql(queryCheck)
-                }
+            queryColumn = queryColumn.substring(queryColumn.length-1, 0)
+            let query2;
+            if((join != undefined) && (join.length > 0)){
+                query2 = "SELECT "+queryColumn+" FROM "+table+" "+join[0].type+" "+join[0].table+" ON "+join[0].on[0][0]+" = "+join[0].on[0][1];
+            }else{
+                query2 = "SELECT "+queryColumn+" FROM "+table;
+            }
+
+            innerJoin  = alasql(query2)
+            data = {
+                "data" : innerJoin,
+                "columns" : kolom,
+            }
+            for(let i=0; i<items.length; i++){
+                let queryCheck = 'DROP TABLE '+items[i].itemKey;
+                alasql(queryCheck)
+            }
             res.send({
                 transaction : true,
-                data: data
+                data: response
             })
         } catch (error) {
             res.send({
@@ -138,4 +306,115 @@ module.exports ={
             })
         }
     },
+
+    async getDataNode(req,res) {
+        try {
+            let response = {}
+            let join = req.body.join
+            let innerJoin;
+            let kolom = []
+            let data = []
+            let table = req.body.table
+            let filter = req.body.filter
+            let queryColumn="";
+
+            const items = req.body.nodeData.map((item) => ({
+                itemKey: item.key,
+                itemId: item.id,
+                itemConfig: item.config
+            }))
+
+           for(let i=0; i<items.length;i++){
+               
+                
+                let connection = await mysql.createConnection({
+                    "host": items[i].itemConfig.host,
+                    "user": items[i].itemConfig.user,
+                    "password": items[i].itemConfig.password,
+                    "database": items[i].itemConfig.database
+                });
+
+                let str2 = "SELECT * FROM "
+
+                let query;
+                let where="";
+
+                query = str2.concat(items[i].itemKey)
+                if(filter.length>0){
+                    filter.forEach(f=> {
+                        if(items[i].itemKey=== f.table){
+                            let condition = " WHERE "
+                            query = query.concat(condition)
+                            Object.keys(f.columns).forEach(indexColumn => {
+                                where += ` ${f.columns[indexColumn]} = '${f.value[indexColumn]}' AND `
+                            });
+                        }
+                    })
+                    
+                    let whereColumn = where.substring(0,where.length-4)
+                    query = query.concat(whereColumn)
+
+                }else{
+                    query = str2.concat(items[i].itemKey)
+                }
+
+                const [rows, fields] = await connection.query(query);
+                connection.end();
+                data[i] = {}
+                data[i].table = items[i].itemKey 
+                data[i].data = rows
+                data[i].columns = fields
+
+                let string = "CREATE TABLE  "+items[i].itemKey;
+                let columns =" ( ";
+
+                for(k=0;k<data[i].columns.length; k++){
+                    kolom.push(data[i].columns[k].table +"_"+data[i].columns[k].name)
+                    columns += data[i].columns[k].name +","
+                    queryColumn += data[i].columns[k].table +"."+data[i].columns[k].name+" AS "+data[i].columns[k].table+"_"+data[i].columns[k].name+","
+                }
+
+                columns = columns.substring(0,columns.length)
+                let replaced = columns.substring(columns.length-1, 0)
+                replaced += ")";
+                let queryAlasql = string + replaced
+                queryAlasql = queryAlasql.toUpperCase()
+                
+                alasql(queryAlasql);
+                alasql.tables[Object.keys(alasql.tables)[i]].data = data[i].data
+                
+           }
+
+           queryColumn = queryColumn.substring(queryColumn.length-1, 0)
+            let queryJoin;
+            if((join != undefined) && (join.length > 0)){
+                queryJoin = "SELECT "+queryColumn+" FROM "+table+" "+join[0].type+" "+join[0].table+" ON "+join[0].on[0][0]+" = "+join[0].on[0][1];
+            }else{
+                queryJoin = "SELECT "+queryColumn+" FROM "+table;
+            }
+
+            console.log(queryJoin)
+
+            innerJoin  = alasql(queryJoin)
+
+            response = {
+                "data" : innerJoin,
+                "columns" : kolom,
+            }
+
+           res.send({
+                transaction : true,
+                data: response
+            })
+        } catch (error) {
+            res.send({
+                transaction : false,
+                error: error.message
+            })
+        }
+    },
+   
 }
+
+// const mysql2 = require('promise-mysql2');
+
