@@ -88,7 +88,7 @@ module.exports ={
 
                     // query = str2.concat(str, " WHERE ")
                 query = str2.concat(items[i].itemKey)
-                if(filter.length>0){
+                if((filter != undefined) && (filter.length>0)){
                     filter.forEach(f=> {
                         // const tableFound = items.find(node=> node.itemKey === f.table)
                         if(items[i].itemKey=== f.table){
