@@ -133,6 +133,10 @@ module.exports ={
 
             innerJoin  = alasql(queryJoin)
 
+            for(let i=0; i<items.length;i++){
+                alasql(`DROP TABLE ${items[i].itemKey}`)
+            }
+
             response = {
                 "data" : innerJoin,
                 "columns" : kolom,
