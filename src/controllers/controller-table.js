@@ -28,6 +28,7 @@ module.exports ={
             const items = req.body.nodeData.map((item) => ({
                 itemKey: item.key,
                 itemId: item.id,
+                columns: []
                 // itemConfig: item.config
             }))
 
@@ -58,18 +59,17 @@ module.exports ={
                    }
                 })
 
-                if((column != undefined) && (column.length>0)){
-                    column.forEach(col=> {
-                        const tableFound = items.find(node=> node.itemId === col.table)
-                        Object.keys(items).forEach(nodeKey=>{
-                            if(items[nodeKey].itemId === tableFound.itemId){
-                                items[nodeKey].columns = col
-                            }
-                        })
-                    })
-                }
+                // if((column != undefined) && (column.length>0)){
+                //     column.forEach(col=> {
+                //         // const tableFound = items.find(node=> node.itemId === col.table)
+                //             Object.keys(items).forEach(nodeKey=>{
+                //                 if(items[nodeKey].itemId === col.table){
+                //                     items[nodeKey].columns = col
+                //                 }
+                //             })
+                //     })
+                // }
 
-                console.log(items, 'lo')
 
            for(let i=0; i<items.length;i++){
                 
@@ -82,19 +82,28 @@ module.exports ={
 
                 let str2="SELECT ";
 
-                if((items[i].columns != undefined) && (items[i].columns.length>0)){
-                    items[i].columns.forEach(col=>{
-                        str2 += ` ${col.name}, `
-                        // str2 += col.name + ","
+                if((column != undefined) && (column.length>0)){
+                    column.forEach(f=> {
+                        console.log(items)
+                        // const tableFound = items.find(node=> node.itemKey === f.table)
+                        if(items[i].itemId=== f.table){
+                        console.log(f.name, 'sds')
+
+                            // let condition = " WHERE "
+                            // query = query.concat(condition)
+                            // Object.keys(f.columns).forEach(indexColumn => {
+                            //     where += ` ${f.columns[indexColumn]} = '${f.value[indexColumn]}' AND `
+                            // });
+                            str2 += ` ${f.name}, `
+                        }
+                       
+
                     })
                     str2 = str2.substring(0,str2.length-2)
                     str2 = `${str2} FROM `
-                    // str2 += `SELECT ${}`
                 }else{
-                    str2 = "SELECT * FROM "
+                     str2 = "SELECT * FROM "
                 }
-
-
 
                 let query;
                 let where="";
@@ -120,6 +129,8 @@ module.exports ={
                     query = str2.concat(items[i].itemKey)
                 }
 
+
+                // console.log(query, 'qu')
                 const [rows, fields] = await connection.query(query);
                 connection.end();
                 data[i] = {}
@@ -141,7 +152,7 @@ module.exports ={
                 replaced += ")";
                 let queryAlasql = string + replaced
                 queryAlasql = queryAlasql.toUpperCase()
-
+                // console.log(data[i].data, 's')
                 alasql(queryAlasql);
                 alasql.tables[Object.keys(alasql.tables)[i]].data = data[i].data
                 
@@ -154,13 +165,14 @@ module.exports ={
             }else{
                 queryJoin = "SELECT "+queryColumn+" FROM "+table;
             }
-
+            console.log(queryJoin, 'j')
             innerJoin  = alasql(queryJoin)
 
             for(let i=0; i<items.length;i++){
                 alasql(`DROP TABLE ${items[i].itemKey}`)
             }
 
+            console.log(innerJoin, 'inn')
             response = {
                 "data" : innerJoin,
                 "columns" : kolom,
