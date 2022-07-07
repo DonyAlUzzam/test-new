@@ -58,14 +58,16 @@ module.exports ={
                    }
                 })
 
-                column.forEach(col=> {
-                    const tableFound = items.find(node=> node.itemId === col.table)
-                    Object.keys(items).forEach(nodeKey=>{
-                        if(items[nodeKey].itemId === tableFound.itemId){
-                            items[nodeKey].columns = col
-                        }
+                if((column != undefined) && (column.length>0)){
+                    column.forEach(col=> {
+                        const tableFound = items.find(node=> node.itemId === col.table)
+                        Object.keys(items).forEach(nodeKey=>{
+                            if(items[nodeKey].itemId === tableFound.itemId){
+                                items[nodeKey].columns = col
+                            }
+                        })
                     })
-                })
+                }
 
                 console.log(items, 'lo')
 
@@ -80,8 +82,8 @@ module.exports ={
 
                 let str2="SELECT ";
 
-                if((column != undefined) && (column.length>0)){
-                    column.forEach(col=>{
+                if((items[i].columns != undefined) && (items[i].columns.length>0)){
+                    items[i].columns.forEach(col=>{
                         str2 += ` ${col.name}, `
                         // str2 += col.name + ","
                     })
