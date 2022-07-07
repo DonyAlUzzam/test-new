@@ -22,6 +22,7 @@ module.exports ={
             let data = []
             let table = req.body.table
             let filter = req.body.filter
+            let column = req.body.columns
             let queryColumn="";
 
             const items = req.body.nodeData.map((item) => ({
@@ -34,7 +35,6 @@ module.exports ={
                 headers: { Authorization: `Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VybmFtZSI6IkFsbCBVc2VyIiwidXNlcl9pcCI6IjAuMC4wLjBcLzAifQ.__Id-5IeNkaiLjFPuHTI5uMPYLL68u6vKFgoX_USz28` }
             };
 
-
             let dataConfig = [];
                 await axios.post('http://172.17.62.209:8088//bigenvelope/public/api/id/526', req.body, config)
                 .then((res) => {
@@ -42,7 +42,6 @@ module.exports ={
                 }).catch((err) => {
                     console.error(err);
                 });
-                console.log(dataConfig)
 
                 // await axios.post('http://172.17.62.209:8088//bigenvelope/public/api/id/526', req.body, config)
 
@@ -59,9 +58,7 @@ module.exports ={
                    }
                 })
 
-
            for(let i=0; i<items.length;i++){
-               
                 
                 let connection = await mysql.createConnection({
                     "host": items[i].itemConfig.host,
@@ -70,7 +67,21 @@ module.exports ={
                     "database": items[i].itemConfig.dbname
                 });
 
-                let str2 = "SELECT * FROM "
+                let str2="SELECT ";
+
+                if((column != undefined) && (column.length>0)){
+                    column.forEach(col=>{
+                        str2 += ` ${col.name}, `
+                        // str2 += col.name + ","
+                    })
+                    str2 = str2.substring(0,str2.length-2)
+                    str2 = `${str2} FROM `
+                    // str2 += `SELECT ${}`
+                }else{
+                    str2 = "SELECT * FROM "
+                }
+
+
 
                 let query;
                 let where="";
@@ -117,7 +128,7 @@ module.exports ={
                 replaced += ")";
                 let queryAlasql = string + replaced
                 queryAlasql = queryAlasql.toUpperCase()
-                
+
                 alasql(queryAlasql);
                 alasql.tables[Object.keys(alasql.tables)[i]].data = data[i].data
                 
