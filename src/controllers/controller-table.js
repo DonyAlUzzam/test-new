@@ -25,6 +25,7 @@ module.exports ={
             let column = req.body.columns
             let queryColumn="";
 
+
             const items = req.body.nodeData.map((item) => ({
                 itemKey: item.key,
                 itemId: item.id,
@@ -37,7 +38,7 @@ module.exports ={
             };
 
             let dataConfig = [];
-                await axios.post('http://172.17.62.209:8088//bigenvelope/public/api/id/526', req.body, config)
+                await axios.post('http://172.17.62.209:8088/bigenvelope/public/api/id/531', req.body, config)
                 .then((res) => {
                     dataConfig = res.data
                 }).catch((err) => {
@@ -48,6 +49,7 @@ module.exports ={
 
                 const result = Object.keys(dataConfig).map((key) => [Number(key), dataConfig[key]]);
 
+                console.log(result, 'res')
                 result.forEach(f=> {
                     const tableFound = items.find(node=> node.itemId === f[1][0])
                    if(tableFound != undefined){
@@ -165,7 +167,6 @@ module.exports ={
             }else{
                 queryJoin = "SELECT "+queryColumn+" FROM "+table;
             }
-            console.log(queryJoin, 'j')
             innerJoin  = alasql(queryJoin)
 
             for(let i=0; i<items.length;i++){
