@@ -105,7 +105,7 @@ module.exports ={
                      str2 = "SELECT * FROM "
                 }
 
-                let query="";
+                let query;
                 let where="";
 
                     // query = str2.concat(str, " WHERE ")
