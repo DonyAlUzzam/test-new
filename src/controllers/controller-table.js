@@ -105,7 +105,7 @@ module.exports ={
                      str2 = "SELECT * FROM "
                 }
 
-                let query;
+                let query="";
                 let where="";
 
                     // query = str2.concat(str, " WHERE ")
@@ -113,19 +113,18 @@ module.exports ={
 
                 console.log(query, 'qeru')
                 if((filter != undefined) && (filter.length>0)){
+                    let condition = " WHERE "
+                    query = query.concat(condition)
                     filter.forEach(f=> {
                         // const tableFound = items.find(node=> node.itemKey === f.table)
                         if(items[i].itemKey=== f.table){
-                            console.log(f.table,'tab')
-                            let condition = " WHERE "
-                            query = query.concat(condition)
+                            
                             // Object.keys(f.columns).forEach(indexColumn => {
                                 // where += ` ${f.columns[indexColumn]} = '${f.value[indexColumn]}' AND `
                                 where += ` ${f.columns} ${f.operator} '${f.value}' AND `
                             // });
                         }
                     })
-                    
                     let whereColumn = where.substring(0,where.length-4)
                     query = query.concat(whereColumn)
 
@@ -133,8 +132,6 @@ module.exports ={
                     query = str2.concat(items[i].itemKey)
                 }
 
-
-                console.log(query, 'qu')
                 const [rows, fields] = await connection.query(query);
                 connection.end();
                 data[i] = {}
@@ -169,6 +166,8 @@ module.exports ={
             }else{
                 queryJoin = "SELECT "+queryColumn+" FROM "+table;
             }
+
+            let count = alasql(`select count(*) as total from (${queryJoin})`)
             innerJoin  = alasql(queryJoin)
 
             for(let i=0; i<items.length;i++){
@@ -176,6 +175,7 @@ module.exports ={
             }
 
             response = {
+                "totalData": count,
                 "data" : innerJoin,
                 "columns" : kolom,
             }
