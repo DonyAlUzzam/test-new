@@ -110,15 +110,15 @@ module.exports ={
 
                     // query = str2.concat(str, " WHERE ")
                 query = str2.concat(items[i].itemKey)
-
-                console.log(query, 'qeru')
                 if((filter != undefined) && (filter.length>0)){
-                    let condition = " WHERE "
-                    query = query.concat(condition)
                     filter.forEach(f=> {
                         // const tableFound = items.find(node=> node.itemKey === f.table)
-                        if(items[i].itemKey=== f.table){
-                            
+                        if(items[i].itemKey === f.table ){
+                            // let condition = " WHERE "
+                            if(!(query.includes(" WHERE "))){
+                                query = query.concat(" WHERE ")
+
+                            }
                             // Object.keys(f.columns).forEach(indexColumn => {
                                 // where += ` ${f.columns[indexColumn]} = '${f.value[indexColumn]}' AND `
                                 where += ` ${f.columns} ${f.operator} '${f.value}' AND `
