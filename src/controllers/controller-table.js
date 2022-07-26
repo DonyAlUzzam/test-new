@@ -25,6 +25,7 @@ module.exports ={
             let column = req.body.columns
             let queryColumn="";
 
+            // console.log(req.body.filter, 'filter')
 
             const items = req.body.nodeData.map((item) => ({
                 itemKey: item.key,
@@ -86,11 +87,8 @@ module.exports ={
 
                 if((column != undefined) && (column.length>0)){
                     column.forEach(f=> {
-                        console.log(items)
                         // const tableFound = items.find(node=> node.itemKey === f.table)
                         if(items[i].itemId=== f.table){
-                        console.log(f.name, 'sds')
-
                             // let condition = " WHERE "
                             // query = query.concat(condition)
                             // Object.keys(f.columns).forEach(indexColumn => {
@@ -112,15 +110,19 @@ module.exports ={
 
                     // query = str2.concat(str, " WHERE ")
                 query = str2.concat(items[i].itemKey)
+
+                console.log(query, 'qeru')
                 if((filter != undefined) && (filter.length>0)){
                     filter.forEach(f=> {
                         // const tableFound = items.find(node=> node.itemKey === f.table)
                         if(items[i].itemKey=== f.table){
+                            console.log(f.table,'tab')
                             let condition = " WHERE "
                             query = query.concat(condition)
-                            Object.keys(f.columns).forEach(indexColumn => {
-                                where += ` ${f.columns[indexColumn]} = '${f.value[indexColumn]}' AND `
-                            });
+                            // Object.keys(f.columns).forEach(indexColumn => {
+                                // where += ` ${f.columns[indexColumn]} = '${f.value[indexColumn]}' AND `
+                                where += ` ${f.columns} ${f.operator} '${f.value}' AND `
+                            // });
                         }
                     })
                     
@@ -132,7 +134,7 @@ module.exports ={
                 }
 
 
-                // console.log(query, 'qu')
+                console.log(query, 'qu')
                 const [rows, fields] = await connection.query(query);
                 connection.end();
                 data[i] = {}
@@ -173,7 +175,6 @@ module.exports ={
                 alasql(`DROP TABLE ${items[i].itemKey}`)
             }
 
-            console.log(innerJoin, 'inn')
             response = {
                 "data" : innerJoin,
                 "columns" : kolom,
